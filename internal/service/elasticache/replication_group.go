@@ -382,10 +382,13 @@ func resourceReplicationGroupCreate(d *schema.ResourceData, meta interface{}) er
 		Tags:                    Tags(tags.IgnoreAWS()),
 	}
 
-	if v, ok := d.GetOk("description"); ok {
-		params.ReplicationGroupDescription = aws.String(v.(string))
-	}
 	if v, ok := d.GetOk("replication_group_description"); ok {
+		params.ReplicationGroupDescription = aws.String(v.(string))
+	} else if v, ok := d.GetOk("description"); ok {
+		params.ReplicationGroupDescription = aws.String(v.(string))
+	} else {
+		// Before major version 4.0, the ReplicationGroupDescription
+		// could be provided as the empty string
 		params.ReplicationGroupDescription = aws.String(v.(string))
 	}
 
@@ -587,8 +590,13 @@ func resourceReplicationGroupRead(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	d.Set("kms_key_id", rgp.KmsKeyId)
-	d.Set("description", rgp.Description)
-	d.Set("replication_group_description", rgp.Description)
+
+	if _, ok := d.GetOk("replication_group_description"); ok {
+		d.Set("replication_group_description", rgp.Description)
+	} else {
+		d.Set("description", rgp.Description)
+	}
+
 	d.Set("number_cache_clusters", len(rgp.MemberClusters))
 	d.Set("num_cache_clusters", len(rgp.MemberClusters))
 	if err := d.Set("member_clusters", flex.FlattenStringSet(rgp.MemberClusters)); err != nil {

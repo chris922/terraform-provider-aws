@@ -189,6 +189,100 @@ func TestAccElastiCacheReplicationGroup_disappears(t *testing.T) {
 	})
 }
 
+// Reference: https://github.com/hashicorp/terraform-provider-aws/issues/23220
+func TestAccElastiCacheReplicationGroup_emptyDeprecatedReplicationGroupDescription(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	var rg elasticache.ReplicationGroup
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_elasticache_replication_group.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		ErrorCheck:   acctest.ErrorCheck(t, elasticache.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckReplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccReplicationGroupEmptyDeprecatedReplicationGroupDescriptionConfig(rName, ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckReplicationGroupExists(resourceName, &rg),
+					resource.TestCheckResourceAttr(resourceName, "replication_group_description", " "),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"apply_immediately"},
+			},
+		},
+	})
+}
+
+// Reference: https://github.com/hashicorp/terraform-provider-aws/issues/23220
+func TestAccElastiCacheReplicationGroup_emptyDescription(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	var rg elasticache.ReplicationGroup
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_elasticache_replication_group.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		ErrorCheck:   acctest.ErrorCheck(t, elasticache.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckReplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccReplicationGroupEmptyDescriptionConfig(rName, ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckReplicationGroupExists(resourceName, &rg),
+					resource.TestCheckResourceAttr(resourceName, "description", " "),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"apply_immediately"},
+			},
+		},
+	})
+}
+
+// Reference: https://github.com/hashicorp/terraform-provider-aws/issues/23220
+func TestAccElastiCacheReplicationGroup_noDescription(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	var rg elasticache.ReplicationGroup
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_elasticache_replication_group.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		ErrorCheck:   acctest.ErrorCheck(t, elasticache.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckReplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccReplicationGroupNoDescriptionConfig(rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckReplicationGroupExists(resourceName, &rg),
+				),
+				// one of description or replication_group_description required?
+				ExpectError: regexp.MustCompile(`Invalid combination of arguments`),
+			},
+		},
+	})
+}
+
 func TestAccElastiCacheReplicationGroup_updateDescription(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping long-running test in short mode")
@@ -469,7 +563,7 @@ func TestAccElastiCacheReplicationGroup_vpc(t *testing.T) {
 	})
 }
 
-func TestAccElastiCacheReplicationGroup_depecatedAvailabilityZones_vpc(t *testing.T) {
+func TestAccElastiCacheReplicationGroup_deprecatedAvailabilityZones_vpc(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping long-running test in short mode")
 	}
@@ -2277,6 +2371,50 @@ resource "aws_elasticache_replication_group" "test" {
   replication_group_id          = %[1]q
 }
 `, rName, parameterGroupNameIndex)
+}
+
+func testAccReplicationGroupNoDescriptionConfig(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_elasticache_replication_group" "test" {
+  replication_group_id       = %[1]q
+  node_type                  = "cache.t3.small"
+  port                       = 6379
+  apply_immediately          = true
+  auto_minor_version_upgrade = false
+  maintenance_window         = "tue:06:30-tue:07:30"
+  snapshot_window            = "01:00-02:00"
+}
+`, rName)
+}
+
+func testAccReplicationGroupEmptyDeprecatedReplicationGroupDescriptionConfig(rName, description string) string {
+	return fmt.Sprintf(`
+resource "aws_elasticache_replication_group" "test" {
+  replication_group_id          = %[1]q
+  replication_group_description = %[2]q
+  node_type                     = "cache.t3.small"
+  port                          = 6379
+  apply_immediately             = true
+  auto_minor_version_upgrade    = false
+  maintenance_window            = "tue:06:30-tue:07:30"
+  snapshot_window               = "01:00-02:00"
+}
+`, rName, description)
+}
+
+func testAccReplicationGroupEmptyDescriptionConfig(rName, description string) string {
+	return fmt.Sprintf(`
+resource "aws_elasticache_replication_group" "test" {
+  replication_group_id       = %[1]q
+  description                = %[2]q
+  node_type                  = "cache.t3.small"
+  port                       = 6379
+  apply_immediately          = true
+  auto_minor_version_upgrade = false
+  maintenance_window         = "tue:06:30-tue:07:30"
+  snapshot_window            = "01:00-02:00"
+}
+`, rName, description)
 }
 
 func testAccReplicationGroupUpdatedDescriptionConfig(rName string) string {
